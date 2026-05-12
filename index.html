@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no">
+<title>입장식 동선 편집기</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none}
+html,body{width:100%;height:100%;overflow:hidden;background:#030312;color:#fff;
+  font-family:-apple-system,'Apple SD Gothic Neo','Malgun Gothic',sans-serif}
+body{display:flex;flex-direction:column}
+
+/* ─ 헤더 ─ */
+#hdr{background:#07021a;border-bottom:2px solid #3300aa;
+  display:flex;align-items:center;padding:8px 12px;gap:10px;flex-shrink:0}
+#hdr h1{flex:1;font-size:22px;color:#cc88ff;font-weight:700}
+.badge{font-size:10px;padding:3px 9px;border-radius:10px;
+  background:#1a0044;color:#aa66ff;border:1px solid #4400aa;white-space:nowrap}
+
+/* ─ 필드 ─ */
+#field-wrap{flex:1;position:relative;overflow:hidden;min-height:0}
+#field{
+  position:absolute;inset:8px;border-radius:10px;overflow:hidden;
+  background-color:#04041f;
+  background-image:linear-gradient(rgba(13,2,48,.9) 1px,transparent 1px),
+                   linear-gradient(90deg,rgba(13,2,48,.9) 1px,transparent 1px);
+  background-size:30px 30px;
+  border:2px solid #4400aa;
+}
+#center-line{position:absolute;left:50%;top:8%;bottom:8%;width:1.5px;
+  background:linear-gradient(to bottom,transparent,#3300aa 20%,#3300aa 80%,transparent);
+  pointer-events:none;z-index:1}
+.dir-label{position:absolute;font-size:13px;font-weight:700;
+  pointer-events:none;z-index:3;color:#6644aa}
+#dir-top{top:6px;left:50%;transform:translateX(-50%)}
+#dir-bot{bottom:6px;left:50%;transform:translateX(-50%)}
+#dir-left{left:6px;top:50%;transform:translateY(-50%)}
+#dir-right{right:6px;top:50%;transform:translateY(-50%)}
+
+/* ─ 필드 위 원 ─ */
+.fc{position:absolute;width:40px;height:40px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:12px;font-weight:700;border:2px solid rgba(255,255,255,.45);
+  cursor:grab;touch-action:none;z-index:10;transform:translate(-50%,-50%);
+  transition:box-shadow .15s}
+.fc:active{cursor:grabbing;transform:translate(-50%,-50%) scale(1.2)}
+.fc.leader,.fc.left,.fc.right{background:#7733cccc;color:#fff;box-shadow:0 0 12px #cc44ff,0 0 24px #aa22ff55}
+
+/* ─ 트레일 캔버스 ─ */
+#trail-cv{position:absolute;inset:0;pointer-events:none;z-index:5}
+
+/* ─ 트레이 ─ */
+#tray-section{flex-shrink:0;background:#05011a;border-top:1.5px solid #2a0066;padding:5px 8px 5px}
+#tray-label{font-size:10px;color:#554477;margin-bottom:4px}
+#tray{display:flex;gap:5px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
+#tray::-webkit-scrollbar{display:none}
+.tc{width:38px;height:38px;flex-shrink:0;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:12px;font-weight:700;border:2px solid rgba(255,255,255,.4);
+  cursor:grab;touch-action:none;transition:opacity .2s}
+.tc:active{cursor:grabbing;transform:scale(1.15)}
+.tc.leader,.tc.left,.tc.right{background:#7733cccc;color:#fff;box-shadow:0 0 8px #cc44ff66}
+.tc.placed{opacity:.2;pointer-events:none}
+
+/* ─ 컨트롤 ─ */
+#ctrls{flex-shrink:0;background:#07021a;border-top:2px solid #3300aa;padding:7px 8px 9px;display:flex;flex-direction:column;gap:5px}
+.row{display:flex;gap:4px;align-items:stretch;flex-wrap:wrap}
+input[type=text]{flex:1;min-width:0;padding:7px 9px;background:#0a0225;
+  border:1.5px solid #3300aa;border-radius:8px;color:#aabbff;
+  font-size:11px;outline:none;font-family:inherit}
+input[type=file]{display:none}
+button{padding:7px 10px;border:1.5px solid #5500aa;background:#110233;color:#cc88ff;
+  border-radius:8px;font-size:11px;cursor:pointer;touch-action:manipulation;
+  white-space:nowrap;font-family:inherit;line-height:1.3}
+button:active{background:#220055}
+.btn-g{border-color:#22cc88;color:#55ffaa;background:#021a0d}
+.btn-p{background:#280066;border-color:#8844ff;color:#fff}
+.btn-b{border-color:#2299ff;color:#66aaff;background:#020a1a}
+.btn-d{border-color:#ff4466;color:#ff8899;background:#1a020a}
+.btn-y{border-color:#ffcc00;color:#ffe066;background:#1a1200}
+
+/* ─ 키프레임 행 ─ */
+#kf-row{display:flex;gap:4px;overflow-x:auto;min-height:30px;align-items:center;padding:2px 0;scrollbar-width:none}
+#kf-row::-webkit-scrollbar{display:none}
+.kf-chip{height:28px;min-width:32px;padding:0 6px;border-radius:14px;
+  background:#1a0044;border:1.5px solid #5500aa;color:#cc88ff;
+  font-size:10px;cursor:pointer;display:flex;align-items:center;
+  justify-content:center;flex-shrink:0;white-space:nowrap;gap:2px}
+.kf-chip.cur{background:#440099;border-color:#aa44ff;color:#fff}
+.kf-empty{color:#443366;font-size:11px}
+
+/* ─ 고스트 (드래그 중 따라다니는 원) ─ */
+.ghost{position:fixed;pointer-events:none;z-index:9999;
+  width:44px;height:44px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:13px;font-weight:700;border:2px solid rgba(255,255,255,.6);
+  transform:translate(-50%,-50%) scale(1.2);opacity:.92}
+
+/* ─ 토스트 ─ */
+#toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%);
+  background:#1a0044;color:#cc88ff;border:1px solid #5500aa;
+  padding:7px 16px;border-radius:20px;font-size:12px;z-index:9998;
+  pointer-events:none;opacity:0;transition:opacity .3s;white-space:nowrap;max-width:90vw;text-align:center}
+
+/* ─ 도움말 오버레이 ─ */
+#help-overlay{display:none;position:fixed;inset:0;background:#030312ee;z-index:9995;
+  overflow-y:auto;padding:20px}
+#help-box{background:#07021a;border:2px solid #5500aa;border-radius:14px;padding:20px;max-width:400px;margin:0 auto}
+#help-box h2{color:#cc88ff;font-size:15px;margin-bottom:12px}
+#help-box h3{color:#aa66ff;font-size:13px;margin:10px 0 4px}
+#help-box p,#help-box li{font-size:12px;color:#aabbcc;line-height:1.7}
+#help-box li{margin-left:14px}
+#help-close{margin-top:16px;width:100%}
+
+/* ─ YouTube hidden ─ */
+#yt-wrap{position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;overflow:hidden}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div id="hdr">
+  <h1>🎭 입장식 동선 편집기</h1>
+  <span class="badge" id="mode-badge">배치 모드</span>
+  <button onclick="document.getElementById('help-overlay').style.display='block'"
+    style="padding:8px 14px;font-size:16px;min-width:0;border-radius:10px">❓ 사용방법</button>
+</div>
+
+<!-- FIELD -->
+<div id="field-wrap">
+  <div id="field">
+    <canvas id="trail-cv"></canvas>
+    <div id="center-line"></div>
+    <div class="dir-label" id="dir-top">앞</div>
+    <div class="dir-label" id="dir-bot">뒤</div>
+    <div class="dir-label" id="dir-left">좌</div>
+    <div class="dir-label" id="dir-right">우</div>
+  </div>
+</div>
+
+<!-- TRAY -->
+<div id="tray-section">
+  <div id="tray-label">미배치 원 목록 — 위 필드로 드래그하여 배치</div>
+  <div id="tray"></div>
+</div>
+
+<!-- CONTROLS -->
+<div id="ctrls">
+
+  <!-- 동선 행 -->
+  <div class="row">
+    <button onclick="loadFormation()">🔺 역V 대형</button>
+    <button onclick="clearField()" class="btn-d">🗑 비우기</button>
+    <button class="btn-p" onclick="addKF()">⊕ 지금 위치 저장</button>
+    <button class="btn-p" id="anim-btn" onclick="toggleAnim()">▶ 동선 재생</button>
+    <button onclick="clearKFs()" class="btn-d">KF 삭제</button>
+  </div>
+
+  <!-- 키프레임 목록 -->
+  <div id="kf-row"><span class="kf-empty">① 원 배치 → ⊕ 저장 → 다시 배치 → ⊕ 저장 → ▶ 재생</span></div>
+</div>
+
+<!-- HELP -->
+<div id="help-overlay">
+  <div id="help-box">
+    <h2>📖 사용 방법</h2>
+
+    <h3>① 원 배치</h3>
+    <ul>
+      <li>아래 트레이에서 번호 원을 <b>필드 위로 드래그</b></li>
+      <li>필드 안에서 드래그 → <b>위치 이동</b></li>
+      <li>필드 밖으로 드래그 → <b>트레이로 복귀</b></li>
+      <li><b>🔺 역V 대형</b> — 24명 자동 배치</li>
+      <li><b>🗑 비우기</b> — 전원 트레이로</li>
+    </ul>
+
+    <h3>② 동선 저장</h3>
+    <ul>
+      <li>배치 완료 후 <b>⊕ 지금 위치 저장</b> 클릭 → KF1 생성</li>
+      <li>원들을 다음 위치로 이동 → 다시 <b>⊕ 지금 위치 저장</b> → KF2 생성</li>
+      <li>반복해서 동선을 완성 (최소 2개 필요)</li>
+      <li>아래 KF 칩 누르면 그 배치로 되돌아감</li>
+      <li><b>KF 삭제</b> — 저장된 동선 전부 삭제</li>
+    </ul>
+
+    <h3>③ 동선 재생</h3>
+    <ul>
+      <li><b>▶ 동선 재생</b> — KF 순서대로 원들이 부드럽게 이동</li>
+      <li>이동 궤적이 네온 선으로 표시됨</li>
+      <li><b>■ 중지</b> — 재생 종료</li>
+    </ul>
+
+    <h3>원 색상</h3>
+    <ul>
+      <li>⚪ <b>1·2번</b> — 리더 (역V 맨 앞)</li>
+      <li>🟣 <b>홀수번</b> — 왼쪽 날개</li>
+      <li>🔵 <b>짝수번</b> — 오른쪽 날개</li>
+    </ul>
+
+    <h3>📱 핸드폰에서 사용하기</h3>
+    <ul>
+      <li>이 파일(<b>choreography.html</b>)을 카카오톡이나 AirDrop으로 핸드폰에 전송</li>
+      <li>핸드폰에서 파일을 열 때 <b>Safari</b>(아이폰) 또는 <b>Chrome</b>(안드로이드)으로 열기</li>
+      <li>손가락으로 원을 드래그해서 배치 가능</li>
+      <li>가로 모드로 돌리면 필드가 더 넓게 보여요</li>
+    </ul>
+
+    <button class="btn-p"
+      onclick="document.getElementById('help-overlay').style.display='none'"
+      style="font-size:15px;padding:10px 0;width:100%;margin-top:4px">✕ 닫기</button>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ── 상태 ─────────────────────────────────────────────────────
+const N = 24;
+const circles = Array.from({length:N}, (_,i) => ({id:i, nx:.5, ny:.5, onField:false}));
+let kfs = [], curKF = 0;
+
+// ── DOM ──────────────────────────────────────────────────────
+const fieldEl  = document.getElementById('field');
+const trayEl   = document.getElementById('tray');
+const trailCV  = document.getElementById('trail-cv');
+const tCtx     = trailCV.getContext('2d');
+
+// ── 원 색상 ──────────────────────────────────────────────────
+function cls(id){ return id<=1?'leader':id%2===0?'left':'right'; }
+
+// ── 원 엘리먼트 생성 ──────────────────────────────────────────
+const trayEls  = [];   // 트레이 div × 24
+const fieldEls = [];   // 필드 div × 24
+
+function initCircles() {
+  for (let i=0;i<N;i++) {
+    // 트레이 원
+    const tc = document.createElement('div');
+    tc.className = `tc ${cls(i)}`; tc.dataset.id = i; tc.textContent = i+1;
+    trayEl.appendChild(tc); trayEls.push(tc);
+
+    // 필드 원
+    const fc = document.createElement('div');
+    fc.className = `fc ${cls(i)}`; fc.dataset.id = i; fc.textContent = i+1;
+    fc.style.display = 'none';
+    fieldEl.appendChild(fc); fieldEls.push(fc);
+  }
+  setupDrag();
+}
+
+function refreshTray() {
+  circles.forEach(c => trayEls[c.id].classList.toggle('placed', c.onField));
+}
+
+// ── 필드에 원 배치/제거 ───────────────────────────────────────
+function placeCircle(id, nx, ny) {
+  const c = circles[id];
+  c.nx = Math.max(.04, Math.min(.96, nx));
+  c.ny = Math.max(.06, Math.min(.92, ny));
+  c.onField = true;
+  const el = fieldEls[id];
+  el.style.display = 'flex';
+  el.style.left = (c.nx*100)+'%';
+  el.style.top  = (c.ny*100)+'%';
+  refreshTray();
+}
+
+function removeFromField(id) {
+  circles[id].onField = false;
+  fieldEls[id].style.display = 'none';
+  refreshTray();
+}
+
+// ── 필드 좌표 변환 ────────────────────────────────────────────
+function clientToField(cx, cy) {
+  const r = fieldEl.getBoundingClientRect();
+  const pad = 24;
+  return {
+    nx: Math.max(pad/r.width,  Math.min(1-pad/r.width,  (cx-r.left)/r.width)),
+    ny: Math.max(pad/r.height, Math.min(1-pad/r.height, (cy-r.top) /r.height))
+  };
+}
+function overField(cx, cy) {
+  const r = fieldEl.getBoundingClientRect();
+  return cx>=r.left && cx<=r.right && cy>=r.top && cy<=r.bottom;
+}
+
+// ── 드래그 ───────────────────────────────────────────────────
+let ghost=null, dragId=null, dragSrc=null;
+
+function makeGhost(id, cx, cy) {
+  ghost = document.createElement('div');
+  ghost.className = `ghost ${cls(id)}`; ghost.textContent = id+1;
+  ghost.style.left = cx+'px'; ghost.style.top = cy+'px';
+  document.body.appendChild(ghost);
+}
+function moveGhost(cx,cy){ if(ghost){ghost.style.left=cx+'px';ghost.style.top=cy+'px';} }
+function removeGhost(){ if(ghost){document.body.removeChild(ghost);ghost=null;} }
+
+function startDragOn(el) {
+  el.addEventListener('pointerdown', e => {
+    if (isAnim) return;
+    e.preventDefault();
+    const id = +el.dataset.id;
+    const isField = el.classList.contains('fc');
+    if (isField && !circles[id].onField) return;
+    if (!isField && circles[id].onField) return;
+
+    el.setPointerCapture(e.pointerId);
+    dragId = id; dragSrc = isField ? 'field' : 'tray';
+    el.style.opacity = isField ? '0' : '.35';
+    makeGhost(id, e.clientX, e.clientY);
+
+    const onMove = e2 => { e2.preventDefault(); moveGhost(e2.clientX, e2.clientY); };
+    const onUp   = e2 => {
+      el.removeEventListener('pointermove', onMove);
+      el.removeEventListener('pointerup',   onUp);
+      el.removeEventListener('pointercancel', onUp);
+      el.style.opacity = '';
+
+      if (overField(e2.clientX, e2.clientY)) {
+        const {nx,ny} = clientToField(e2.clientX, e2.clientY);
+        placeCircle(id, nx, ny);
+      } else if (dragSrc==='field') {
+        removeFromField(id);
+      }
+      removeGhost(); dragId=null; dragSrc=null;
+    };
+    el.addEventListener('pointermove', onMove, {passive:false});
+    el.addEventListener('pointerup',   onUp);
+    el.addEventListener('pointercancel', onUp);
+  });
+}
+
+function setupDrag() {
+  trayEls.forEach(startDragOn);
+  fieldEls.forEach(startDragOn);
+}
+
+// ── 기본 역V 대형 ─────────────────────────────────────────────
+function loadFormation() {
+  const cx=.5, cy=.22, sw=.040, sd=.057;
+  const pos=[];
+  pos[0]={nx:cx-.021,ny:cy}; pos[1]={nx:cx+.021,ny:cy};
+  for(let k=1;k<=11;k++){
+    pos[2*k]  ={nx:cx-(k*1.12+.05)*sw, ny:cy+k*sd};
+    pos[2*k+1]={nx:cx+(k*1.12+.05)*sw, ny:cy+k*sd};
+  }
+  circles.forEach((c,i)=>placeCircle(i, pos[i].nx, pos[i].ny));
+  toast('역V 대형 배치 완료!');
+}
+
+function clearField() {
+  circles.forEach(c=>{if(c.onField)removeFromField(c.id)});
+  toast('필드 초기화 완료');
+}
+
+// ── 키프레임 ─────────────────────────────────────────────────
+function addKF() {
+  if(!circles.some(c=>c.onField)){ toast('⚠ 먼저 원을 필드에 배치하세요'); return; }
+  const t = getAudioMs() || kfs.length*3500;
+  const pos = circles.map(c=>({nx:c.nx,ny:c.ny,onField:c.onField}));
+  const kf = {time:t, pos};
+  let ins=false;
+  for(let i=0;i<kfs.length;i++){ if(kfs[i].time>t){kfs.splice(i,0,kf);ins=true;break;} }
+  if(!ins) kfs.push(kf);
+  renderKFRow();
+  toast(`⊕ 키프레임 ${kfs.length}번 저장 (${(t/1000).toFixed(1)}초)`);
+}
+
+function gotoKF(i) {
+  if(i<0||i>=kfs.length) return;
+  curKF=i; stopAnim();
+  kfs[i].pos.forEach((p,j)=>{ p.onField?placeCircle(j,p.nx,p.ny):circles[j].onField&&removeFromField(j); });
+  renderKFRow();
+}
+
+function clearKFs() {
+  if(!kfs.length) return;
+  if(!confirm('키프레임을 모두 삭제할까요?')) return;
+  kfs=[]; renderKFRow();
+}
+
+function renderKFRow() {
+  const row=document.getElementById('kf-row');
+  if(!kfs.length){ row.innerHTML='<span class="kf-empty">① 원 배치 → ⊕ 저장 → 다시 배치 → ⊕ 저장 → ▶ 재생</span>'; return; }
+  row.innerHTML = kfs.map((kf,i)=>{
+    const s=(kf.time/1000).toFixed(1);
+    const n=kf.pos.filter(p=>p.onField).length;
+    return `<div class="kf-chip${i===curKF?' cur':''}" onclick="gotoKF(${i})">KF${i+1}<br><span style="font-size:9px">${s}s·${n}명</span></div>`;
+  }).join('');
+}
+
+// ── 애니메이션 ────────────────────────────────────────────────
+let isAnim=false, animRAF, animStart, animDur;
+let trails=Array.from({length:N},()=>[]);
+
+function toggleAnim(){ isAnim?stopAnim():startAnim(); }
+
+function startAnim() {
+  if(kfs.length<2){ toast('⚠ 키프레임 2개 이상 필요 (⊕ 지금 위치 저장)'); return; }
+  isAnim=true; trails=Array.from({length:N},()=>[]);
+  document.getElementById('anim-btn').textContent='■ 중지';
+  document.getElementById('mode-badge').textContent='재생 중 🎬';
+  document.getElementById('mode-badge').style.color='#ffdd66';
+  animDur = kfs[kfs.length-1].time - kfs[0].time || kfs.length*3500;
+  animStart = performance.now();
+  resizeTrail();
+  animRAF = requestAnimationFrame(animStep);
+}
+
+function stopAnim() {
+  isAnim=false; cancelAnimationFrame(animRAF); clearTrail();
+  document.getElementById('anim-btn').textContent='▶ 동선 재생';
+  document.getElementById('mode-badge').textContent='배치 모드';
+  document.getElementById('mode-badge').style.color='';
+  if(kfs.length) gotoKF(curKF);
+}
+
+function ease(t){ return t*t*(3-2*t); }
+
+function animStep(now) {
+  if(!isAnim) return;
+  let el=now-animStart;
+  if(el>animDur+800){ animStart=now; el=0; trails=Array.from({length:N},()=>[]); clearTrail(); }
+
+  const t=kfs[0].time+el;
+  let k1=kfs[0], k2=kfs[kfs.length-1];
+  for(let i=0;i<kfs.length-1;i++){
+    if(t>=kfs[i].time && t<=kfs[i+1].time){ k1=kfs[i]; k2=kfs[i+1]; break; }
+  }
+  const span=k2.time-k1.time||1;
+  const a=ease(Math.max(0,Math.min(1,(t-k1.time)/span)));
+
+  k1.pos.forEach((p1,i)=>{
+    const p2=k2.pos[i];
+    if(!p1.onField&&!p2.onField){ fieldEls[i].style.display='none'; return; }
+    const nx=p1.nx+a*(p2.nx-p1.nx), ny=p1.ny+a*(p2.ny-p1.ny);
+    fieldEls[i].style.display='flex';
+    fieldEls[i].style.left=(nx*100)+'%';
+    fieldEls[i].style.top=(ny*100)+'%';
+    const fx=nx*trailCV.width, fy=ny*trailCV.height;
+    trails[i].push({x:fx,y:fy});
+    if(trails[i].length>50) trails[i].shift();
+  });
+
+  drawTrails();
+  animRAF=requestAnimationFrame(animStep);
+}
+
+// ── 트레일 캔버스 ─────────────────────────────────────────────
+function resizeTrail(){ trailCV.width=fieldEl.clientWidth; trailCV.height=fieldEl.clientHeight; }
+function clearTrail(){ tCtx.clearRect(0,0,trailCV.width,trailCV.height); }
+function drawTrails(){
+  clearTrail();
+  trails.forEach((tr,i)=>{
+    if(tr.length<2) return;
+    const c='#cc44ff';
+    tCtx.strokeStyle=c; tCtx.lineWidth=2.5; tCtx.lineCap='round'; tCtx.lineJoin='round';
+    tCtx.beginPath();
+    tr.forEach((p,j)=>{ tCtx.globalAlpha=(j/tr.length)*.5; j===0?tCtx.moveTo(p.x,p.y):tCtx.lineTo(p.x,p.y); });
+    tCtx.stroke(); tCtx.globalAlpha=1;
+  });
+}
+window.addEventListener('resize',()=>{ resizeTrail(); });
+
+function getAudioMs() { return 0; }
+
+// ── 토스트 ────────────────────────────────────────────────────
+function toast(msg){
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.style.opacity='1';
+  clearTimeout(el._t); el._t=setTimeout(()=>el.style.opacity='0',2800);
+}
+
+// ── 초기화 ───────────────────────────────────────────────────
+initCircles();
+renderKFRow();
+resizeTrail();
+</script>
+</body>
+</html>
