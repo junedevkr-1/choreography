@@ -112,7 +112,7 @@ button:active{background:#220055}
 #help-close{margin-top:16px;width:100%}
 
 /* ─ YouTube hidden ─ */
-#yt-wrap{position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;overflow:hidden}
+#yt-wrap{position:fixed;bottom:0;right:0;width:1px;height:1px;overflow:hidden;z-index:-1}
 </style>
 </head>
 <body>
@@ -145,6 +145,13 @@ button:active{background:#220055}
 
 <!-- CONTROLS -->
 <div id="ctrls">
+
+  <!-- 음악 행 -->
+  <div class="row">
+    <input type="text" id="yt-url" placeholder="🎵 YouTube URL 붙여넣기 (예: youtu.be/xxxxx)">
+    <button id="yt-btn" onclick="ytPlay()" class="btn-y">▶ 재생</button>
+    <button onclick="ytStop()" class="btn-d">■ 정지</button>
+  </div>
 
   <!-- 동선 행 -->
   <div class="row">
@@ -211,6 +218,7 @@ button:active{background:#220055}
 </div>
 
 <div id="toast"></div>
+<div id="yt-wrap"><div id="yt-player"></div></div>
 
 <script>
 // ── 상태 ─────────────────────────────────────────────────────
@@ -462,6 +470,56 @@ function drawTrails(){
   });
 }
 window.addEventListener('resize',()=>{ resizeTrail(); });
+
+// ── YouTube ───────────────────────────────────────────────────
+let ytPlayer = null, ytAPIReady = false;
+
+(function(){
+  const s = document.createElement('script');
+  s.src = 'https://www.youtube.com/iframe_api';
+  document.head.appendChild(s);
+})();
+
+window.onYouTubeIframeAPIReady = function() { ytAPIReady = true; };
+
+function extractVid(url) {
+  const m = url.match(/(?:v=|youtu\.be\/|embed\/)([a-zA-Z0-9_-]{11})/);
+  return m ? m[1] : null;
+}
+
+function ytPlay() {
+  const url = document.getElementById('yt-url').value.trim();
+  const vid = extractVid(url);
+  if (!vid) { toast('⚠ 올바른 YouTube URL을 입력하세요'); return; }
+  if (!ytAPIReady) { toast('⚠ 잠시 후 다시 눌러주세요'); return; }
+  if (ytPlayer) { ytPlayer.destroy(); ytPlayer = null; }
+  document.getElementById('yt-btn').textContent = '⏸ 일시정지';
+  document.getElementById('yt-btn').onclick = ytPause;
+  ytPlayer = new YT.Player('yt-player', {
+    height:'1', width:'1',
+    videoId: vid,
+    playerVars: {autoplay:1, controls:0, playsinline:1},
+    events: { onReady: e => e.target.playVideo() }
+  });
+}
+
+function ytPause() {
+  if (ytPlayer) ytPlayer.pauseVideo();
+  document.getElementById('yt-btn').textContent = '▶ 재생';
+  document.getElementById('yt-btn').onclick = ytResume;
+}
+
+function ytResume() {
+  if (ytPlayer) ytPlayer.playVideo();
+  document.getElementById('yt-btn').textContent = '⏸ 일시정지';
+  document.getElementById('yt-btn').onclick = ytPause;
+}
+
+function ytStop() {
+  if (ytPlayer) { ytPlayer.destroy(); ytPlayer = null; }
+  document.getElementById('yt-btn').textContent = '▶ 재생';
+  document.getElementById('yt-btn').onclick = ytPlay;
+}
 
 function getAudioMs() { return 0; }
 
