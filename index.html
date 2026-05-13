@@ -542,6 +542,9 @@ function ytStop() {
 // ── MP3 ──────────────────────────────────────────────────────
 const audioEl = new Audio();
 audioEl.preload = 'auto';
+let savedSpeed = 1.0;
+audioEl.addEventListener('loadedmetadata', () => { audioEl.playbackRate = savedSpeed; });
+audioEl.addEventListener('play', () => { audioEl.playbackRate = savedSpeed; });
 
 function mp3Load(input) {
   const file = input.files[0];
@@ -575,13 +578,14 @@ function mp3Stop() {
 }
 
 function setSpeed(s) {
+  savedSpeed = s;
   audioEl.playbackRate = s;
   ['075','100','125','150','200'].forEach(k => {
     const el = document.getElementById('sp'+k);
-    el.style.borderColor = ''; el.style.color = '';
+    if (el) { el.style.borderColor=''; el.style.color=''; }
   });
-  const id = 'sp' + String(s).replace('.','').padEnd(3,'0');
-  const active = document.getElementById(id);
+  const ids = {0.75:'sp075', 1:'sp100', 1.25:'sp125', 1.5:'sp150', 2:'sp200'};
+  const active = document.getElementById(ids[s]);
   if (active) { active.style.borderColor='#ffcc00'; active.style.color='#ffe066'; }
   toast('재생속도 ' + s + '×');
 }
