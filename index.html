@@ -149,9 +149,16 @@ button:active{background:#220055}
 
   <!-- 음악 행 -->
   <div class="row">
-    <input type="text" id="yt-url" placeholder="🎵 YouTube URL 붙여넣기 (예: youtu.be/xxxxx)">
-    <button id="yt-btn" onclick="ytPlay()" class="btn-y">▶ 재생</button>
-    <button onclick="ytStop()" class="btn-d">■ 정지</button>
+    <input type="text" id="yt-url" placeholder="🎵 YouTube URL 붙여넣기">
+    <button id="yt-btn" onclick="ytPlay()" class="btn-y">▶ YT</button>
+    <button onclick="ytStop()" class="btn-d">■</button>
+  </div>
+  <div class="row">
+    <label class="btn btn-b" for="mp3-input" style="cursor:pointer">📂 MP3 선택</label>
+    <input type="file" id="mp3-input" accept="audio/*" onchange="mp3Load(this)">
+    <span id="mp3-name" style="font-size:10px;color:#aabbcc;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;align-self:center"></span>
+    <button id="mp3-btn" onclick="mp3Play()" class="btn-y">▶ MP3</button>
+    <button onclick="mp3Stop()" class="btn-d">■</button>
   </div>
 
   <!-- 동선 행 -->
@@ -522,6 +529,41 @@ function ytStop() {
   document.getElementById('yt-wrap').classList.remove('active');
   document.getElementById('yt-btn').textContent = '▶ 재생';
   document.getElementById('yt-btn').onclick = ytPlay;
+}
+
+// ── MP3 ──────────────────────────────────────────────────────
+const audioEl = new Audio();
+audioEl.preload = 'auto';
+
+function mp3Load(input) {
+  const file = input.files[0];
+  if (!file) return;
+  audioEl.pause();
+  audioEl.src = URL.createObjectURL(file);
+  document.getElementById('mp3-name').textContent = file.name;
+  document.getElementById('mp3-btn').textContent = '▶ MP3';
+  document.getElementById('mp3-btn').onclick = mp3Play;
+  toast('🎵 ' + file.name);
+}
+
+function mp3Play() {
+  if (!audioEl.src) { toast('⚠ MP3 파일을 먼저 선택하세요'); return; }
+  audioEl.play();
+  document.getElementById('mp3-btn').textContent = '⏸ 일시정지';
+  document.getElementById('mp3-btn').onclick = mp3Pause;
+}
+
+function mp3Pause() {
+  audioEl.pause();
+  document.getElementById('mp3-btn').textContent = '▶ MP3';
+  document.getElementById('mp3-btn').onclick = mp3Play;
+}
+
+function mp3Stop() {
+  audioEl.pause();
+  audioEl.currentTime = 0;
+  document.getElementById('mp3-btn').textContent = '▶ MP3';
+  document.getElementById('mp3-btn').onclick = mp3Play;
 }
 
 function getAudioMs() { return 0; }
