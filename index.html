@@ -516,6 +516,7 @@ function ytPlay() {
   if (!ytPlayerReady) { toast('⚠ 잠시 후 다시 눌러주세요'); return; }
   document.getElementById('yt-wrap').classList.add('active');
   ytPlayer.loadVideoById(vid);
+  try { ytPlayer.setPlaybackRate(savedSpeed); } catch(e) {}
   document.getElementById('yt-btn').textContent = '⏸ 일시정지';
   document.getElementById('yt-btn').onclick = ytPause;
 }
@@ -580,6 +581,9 @@ function mp3Stop() {
 function setSpeed(s) {
   savedSpeed = s;
   audioEl.playbackRate = s;
+  if (ytPlayer && ytPlayerReady) {
+    try { ytPlayer.setPlaybackRate(s); } catch(e) {}
+  }
   ['075','100','125','150','200'].forEach(k => {
     const el = document.getElementById('sp'+k);
     if (el) { el.style.borderColor=''; el.style.color=''; }
