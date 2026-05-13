@@ -472,7 +472,7 @@ function drawTrails(){
 window.addEventListener('resize',()=>{ resizeTrail(); });
 
 // ── YouTube ───────────────────────────────────────────────────
-let ytPlayer = null, ytAPIReady = false;
+let ytPlayer = null, ytPlayerReady = false;
 
 (function(){
   const s = document.createElement('script');
@@ -480,7 +480,13 @@ let ytPlayer = null, ytAPIReady = false;
   document.head.appendChild(s);
 })();
 
-window.onYouTubeIframeAPIReady = function() { ytAPIReady = true; };
+window.onYouTubeIframeAPIReady = function() {
+  ytPlayer = new YT.Player('yt-player', {
+    height:'2', width:'2',
+    playerVars: {controls:0, playsinline:1, rel:0},
+    events: { onReady: () => { ytPlayerReady = true; } }
+  });
+};
 
 function extractVid(url) {
   const m = url.match(/(?:v=|youtu\.be\/|embed\/)([a-zA-Z0-9_-]{11})/);
@@ -491,16 +497,10 @@ function ytPlay() {
   const url = document.getElementById('yt-url').value.trim();
   const vid = extractVid(url);
   if (!vid) { toast('⚠ 올바른 YouTube URL을 입력하세요'); return; }
-  if (!ytAPIReady) { toast('⚠ 잠시 후 다시 눌러주세요'); return; }
-  if (ytPlayer) { ytPlayer.destroy(); ytPlayer = null; }
+  if (!ytPlayerReady) { toast('⚠ 잠시 후 다시 눌러주세요'); return; }
+  ytPlayer.loadVideoById(vid);
   document.getElementById('yt-btn').textContent = '⏸ 일시정지';
   document.getElementById('yt-btn').onclick = ytPause;
-  ytPlayer = new YT.Player('yt-player', {
-    height:'1', width:'1',
-    videoId: vid,
-    playerVars: {autoplay:1, controls:0, playsinline:1},
-    events: { onReady: e => e.target.playVideo() }
-  });
 }
 
 function ytPause() {
@@ -516,7 +516,7 @@ function ytResume() {
 }
 
 function ytStop() {
-  if (ytPlayer) { ytPlayer.destroy(); ytPlayer = null; }
+  if (ytPlayer) ytPlayer.stopVideo();
   document.getElementById('yt-btn').textContent = '▶ 재생';
   document.getElementById('yt-btn').onclick = ytPlay;
 }
