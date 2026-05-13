@@ -112,7 +112,8 @@ button:active{background:#220055}
 #help-close{margin-top:16px;width:100%}
 
 /* ─ YouTube hidden ─ */
-#yt-wrap{position:fixed;bottom:0;right:0;width:1px;height:1px;overflow:hidden;z-index:-1}
+#yt-wrap{position:fixed;bottom:60px;right:8px;width:160px;height:90px;border-radius:8px;overflow:hidden;z-index:20;box-shadow:0 0 10px #5500aa;display:none}
+#yt-wrap.active{display:block}
 </style>
 </head>
 <body>
@@ -482,8 +483,8 @@ let ytPlayer = null, ytPlayerReady = false;
 
 window.onYouTubeIframeAPIReady = function() {
   ytPlayer = new YT.Player('yt-player', {
-    height:'2', width:'2',
-    playerVars: {controls:0, playsinline:1, rel:0},
+    height:'90', width:'160',
+    playerVars: {controls:1, playsinline:1, rel:0},
     events: { onReady: () => { ytPlayerReady = true; } }
   });
 };
@@ -498,6 +499,7 @@ function ytPlay() {
   const vid = extractVid(url);
   if (!vid) { toast('⚠ 올바른 YouTube URL을 입력하세요'); return; }
   if (!ytPlayerReady) { toast('⚠ 잠시 후 다시 눌러주세요'); return; }
+  document.getElementById('yt-wrap').classList.add('active');
   ytPlayer.loadVideoById(vid);
   document.getElementById('yt-btn').textContent = '⏸ 일시정지';
   document.getElementById('yt-btn').onclick = ytPause;
@@ -517,6 +519,7 @@ function ytResume() {
 
 function ytStop() {
   if (ytPlayer) ytPlayer.stopVideo();
+  document.getElementById('yt-wrap').classList.remove('active');
   document.getElementById('yt-btn').textContent = '▶ 재생';
   document.getElementById('yt-btn').onclick = ytPlay;
 }
